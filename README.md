@@ -57,10 +57,11 @@ Spring Boot는 나중에 로드된 설정이 이전 설정을 덮어씁니다(Ov
     |   3. application-service-{profile}-infra.properties (Grouped)
     |   4. application-service-{profile}-kafka.properties (Grouped)
     |   ---------------------------------------------------------
-    |   5. db-{type}.properties (Feature Config)
+    |   5. db-{type}.properties (Feature Base)
+    |   6. db-{type}-{profile}.properties (Feature Profile Config)
     |   ---------------------------------------------------------
-    |   6. {service-name}.properties (Service Specific)
-    |   7. {service-name}-{profile}.properties (Service Profile Specific)
+    |   7. {service-name}.properties (Service Specific)
+    |   8. {service-name}-{profile}.properties (Service Profile Specific)
 [High Priority]
 ```
 
@@ -76,3 +77,38 @@ Spring Boot는 나중에 로드된 설정이 이전 설정을 덮어씁니다(Ov
 **결과:** 최종적으로 `localhost:9095`가 적용됩니다.
 
 # JWT_SECRET: _mk8+951BqW}oMB-@V3/AyG)Z:}n[9x[-)Of0H:%qDOcCUnoSpEoSKq_([$tX,OS#Ob<dDL%@[6F}f_<J%k=@H
+
+Redis나 MongoDB 설정도 별도 파일(db-redis.properties, db-mongo.properties)로 분리하는 이유
+
+필요한 서비스만 선택 로드: Redis를 쓰지 않는 서비스는 Redis 설정을 가져가지 않아 가벼워집니다.
+유지보수 용이: 인프라 설정이 application-service.properties에 섞여 있지 않아 관리가 명확해집니다.
+
+# application.properties (User Service 내부)
+spring.application.name=user-service
+spring.profiles.active=local
+
+# name 파라미터에 필요한 설정 파일들을 나열 (순서 중요: 뒤쪽이 우선순위 높음)
+spring.config.import=optional:configserver:http://localhost:8888?name=application-service,db-mariadb,db-redis,{user-service}
+
+# Elasticsearch 공통 설정 (기본값: Dev/Docker 환경)
+# db-elastic.properties
+spring.elasticsearch.uris=${ELASTICSEARCH_URIS:http://dev-elastic:9200}
+spring.elasticsearch.username=${ELASTICSEARCH_USERNAME:}
+spring.elasticsearch.password=${ELASTICSEARCH_PASSWORD:}
+
+# Elasticsearch Local 환경 설정 (localhost 사용)
+# db-elastic-local.properties
+spring.elasticsearch.uris=http://localhost:9200
+
+# Kafka 공통 설정 (기본값: Dev/Docker 환경)
+# db-kafka.properties
+spring.kafka.bootstrap-servers=${KAFKA_BOOTSTRAP:dev-kafka:9092}
+spring.kafka.consumer.auto-offset-reset=latest
+spring.kafka.producer.key-serializer=org.apache.kafka.common.serialization.StringSerializer
+spring.kafka.producer.value-serializer=org.apache.kafka.common.serialization.StringSerializer
+spring.kafka.consumer.key-deserializer=org.apache.kafka.common.serialization.StringDeserializer
+spring.kafka.consumer.value-deserializer=org.apache.kafka.common.serialization.StringDeserializer
+
+# Kafka Local 환경 설정 (외부 노출 포트 사용)
+# db-kafka-local.properties
+spring.kafka.bootstrap-servers=localhost:19092
